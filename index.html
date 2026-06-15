@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SIREN Live Announcement</title>
+
+<style>
+body {
+    margin:0;
+    font-family: Arial, sans-serif;
+    background:#0b1220;
+    color:white;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    min-height:100vh;
+}
+
+.card {
+    width:90%;
+    max-width:700px;
+    background:#111827;
+    padding:25px;
+    border-radius:16px;
+    box-shadow:0 0 20px rgba(0,255,255,0.15);
+}
+
+h1 {
+    text-align:center;
+}
+
+.price {
+    font-size:3rem;
+    text-align:center;
+    margin:20px 0;
+}
+
+.up { color:#22c55e; }
+.down { color:#ef4444; }
+
+.announcement {
+    background:#0f172a;
+    padding:15px;
+    border-radius:10px;
+    line-height:1.6;
+    min-height:120px;
+}
+
+.time {
+    text-align:center;
+    margin-top:10px;
+    opacity:0.7;
+}
+</style>
+</head>
+
+<body>
+
+<div class="card">
+    <h1>🚨 SIREN LIVE MARKET</h1>
+
+    <div id="price" class="price">Loading...</div>
+
+    <div id="announcement" class="announcement">
+        Mengambil data dari blockchain...
+    </div>
+
+    <div id="time" class="time"></div>
+</div>
+
+<script>
+
+const contract = "0x997a58129890bbda032231a52ed1ddc845fc18e1";
+
+async function fetchSiren() {
+    try {
+
+        const res = await fetch(
+            `https://api.dexscreener.com/latest/dex/tokens/${contract}`
+        );
+
+        const data = await res.json();
+        console.log("API DATA:", data);
+
+        if (!data.pairs || data.pairs.length === 0) {
+            document.getElementById("price").innerText = "N/A";
+            document.getElementById("announcement").innerHTML =
+                "⚠️ Pair SIREN tidak ditemukan di DexScreener.";
+            return;
+        }
+
+        const pair = data.pairs[0];
+
+        const price = parseFloat(pair.priceUsd || 0);
+        const change = parseFloat(pair.priceChange?.h24 || 0);
+        const volume = parseFloat(pair.volume?.h24 || 0);
+
+        const priceEl = document.getElementById("price");
+
+        priceEl.innerText = `$${price.toFixed(6)}`;
+        priceEl.className = change >= 0 ? "price up" : "price down";
+
+        let sentiment = "";
+
+        if (change > 10) sentiment = "🔥 Strong bullish momentum";
+        else if (change > 3) sentiment = "📈 Bullish trend";
+        else if (change > 0) sentiment = "✅ Slightly bullish";
+        else if (change > -3) sentiment = "⚠️ Mild correction";
+        else sentiment = "🔻 Strong bearish pressure";
+
+        document.getElementById("announcement").innerHTML = `
+            🚨 <b>SIREN LIVE UPDATE</b> 🚨<br><br>
+
+            💰 Price: <b>$${price.toFixed(6)}</b><br>
+            📊 24H Change: <b>${change.toFixed(2)}%</b><br>
+            📦 Volume: <b>$${volume.toLocaleString()}</b><br><br>
+
+            ${sentiment}<br><br>
+
+            <small>Auto update setiap 10 detik • Bukan financial advice</small>
+        `;
+
+        document.getElementById("time").innerText =
+            "Last update: " + new Date().toLocaleTimeString();
+
+    } catch (err) {
+        console.error(err);
+
+        document.getElementById("price").innerText = "ERROR";
+        document.getElementById("announcement").innerHTML =
+            "❌ Gagal mengambil data. Cek koneksi atau API.";
+    }
+}
+
+fetchSiren();
+setInterval(fetchSiren, 10000);
+
+</script>
+
+</body>
+</html>
