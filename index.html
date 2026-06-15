@@ -1,140 +1,168 @@
 <!DOCTYPE html>
-<html lang="id">
+<html>
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>SIREN Live Announcement</title>
+  <title>SIREN LIVE COMMAND</title>
+  <style>
+    body {
+      margin: 0;
+      background: black;
+      color: #00ff9d;
+      font-family: monospace;
+    }
 
-<style>
-body {
-    margin:0;
-    font-family: Arial, sans-serif;
-    background:#0b1220;
-    color:white;
-    display:flex;
-    justify-content:center;
-    align-items:center;
-    min-height:100vh;
-}
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      padding: 10px;
+    }
 
-.card {
-    width:90%;
-    max-width:700px;
-    background:#111827;
-    padding:25px;
-    border-radius:16px;
-    box-shadow:0 0 20px rgba(0,255,255,0.15);
-}
+    .box {
+      border: 1px solid #00ff9d;
+      padding: 10px;
+    }
 
-h1 {
-    text-align:center;
-}
+    .big {
+      font-size: 20px;
+      font-weight: bold;
+    }
 
-.price {
-    font-size:3rem;
-    text-align:center;
-    margin:20px 0;
-}
+    .danger {
+      color: red;
+    }
 
-.up { color:#22c55e; }
-.down { color:#ef4444; }
+    .warn {
+      color: orange;
+    }
 
-.announcement {
-    background:#0f172a;
-    padding:15px;
-    border-radius:10px;
-    line-height:1.6;
-    min-height:120px;
-}
-
-.time {
-    text-align:center;
-    margin-top:10px;
-    opacity:0.7;
-}
-</style>
+    iframe {
+      width: 100%;
+      height: 300px;
+      border: none;
+    }
+  </style>
 </head>
 
 <body>
 
-<div class="card">
-    <h1>🚨 SIREN LIVE MARKET</h1>
+<h2 style="text-align:center;">⚡ SIREN COMMAND TERMINAL ⚡</h2>
 
-    <div id="price" class="price">Loading...</div>
+<div class="grid">
 
-    <div id="announcement" class="announcement">
-        Mengambil data dari blockchain...
-    </div>
+  <!-- PRICE -->
+  <div class="box">
+    <div class="big">PRICE</div>
+    <div id="price">loading...</div>
+    <div id="mc">MC: ...</div>
+    <div id="vol">VOL: ...</div>
+  </div>
 
-    <div id="time" class="time"></div>
+  <!-- WHALE -->
+  <div class="box">
+    <div class="big">🐋 WHALE TRACKER</div>
+    <div id="whale">loading...</div>
+  </div>
+
+  <!-- LIQUIDATION ZONE -->
+  <div class="box">
+    <div class="big">🔥 LIQUIDATION ZONE (EST)</div>
+    <div id="liq">calculating...</div>
+  </div>
+
+  <!-- HEATMAP (external) -->
+  <div class="box">
+    <div class="big">HEATMAP</div>
+    <iframe src="https://www.coinglass.com/pro/futures/LiquidationHeatMap"></iframe>
+  </div>
+
 </div>
 
 <script>
 
-const contract = "0x997a58129890bbda032231a52ed1ddc845fc18e1";
+const CA = "0x997a58129890bbda032231a52ed1ddc845fc18e1";
 
-async function fetchSiren() {
-    try {
+let lastPrice = 0;
 
-        const res = await fetch(
-            `https://api.dexscreener.com/latest/dex/tokens/${contract}`
-        );
+// ===== FETCH PRICE + MARKET =====
+async function fetchMarket() {
+  try {
+    const res = await fetch("https://api.dexscreener.com/latest/dex/tokens/" + CA);
+    const data = await res.json();
 
-        const data = await res.json();
-        console.log("API DATA:", data);
+    const pair = data.pairs[0];
 
-        if (!data.pairs || data.pairs.length === 0) {
-            document.getElementById("price").innerText = "N/A";
-            document.getElementById("announcement").innerHTML =
-                "⚠️ Pair SIREN tidak ditemukan di DexScreener.";
-            return;
-        }
+    const price = parseFloat(pair.priceUsd);
+    lastPrice = price;
 
-        const pair = data.pairs[0];
+    document.getElementById("price").innerHTML =
+      "$" + price.toFixed(8);
 
-        const price = parseFloat(pair.priceUsd || 0);
-        const change = parseFloat(pair.priceChange?.h24 || 0);
-        const volume = parseFloat(pair.volume?.h24 || 0);
+    document.getElementById("mc").innerHTML =
+      "MC: $" + Number(pair.fdv).toLocaleString();
 
-        const priceEl = document.getElementById("price");
+    document.getElementById("vol").innerHTML =
+      "VOL: $" + Number(pair.volume.h24).toLocaleString();
 
-        priceEl.innerText = `$${price.toFixed(6)}`;
-        priceEl.className = change >= 0 ? "price up" : "price down";
-
-        let sentiment = "";
-
-        if (change > 10) sentiment = "🔥 Strong bullish momentum";
-        else if (change > 3) sentiment = "📈 Bullish trend";
-        else if (change > 0) sentiment = "✅ Slightly bullish";
-        else if (change > -3) sentiment = "⚠️ Mild correction";
-        else sentiment = "🔻 Strong bearish pressure";
-
-        document.getElementById("announcement").innerHTML = `
-            🚨 <b>SIREN LIVE UPDATE</b> 🚨<br><br>
-
-            💰 Price: <b>$${price.toFixed(6)}</b><br>
-            📊 24H Change: <b>${change.toFixed(2)}%</b><br>
-            📦 Volume: <b>$${volume.toLocaleString()}</b><br><br>
-
-            ${sentiment}<br><br>
-
-            <small>Auto update setiap 10 detik • Bukan financial advice</small>
-        `;
-
-        document.getElementById("time").innerText =
-            "Last update: " + new Date().toLocaleTimeString();
-
-    } catch (err) {
-        console.error(err);
-
-        document.getElementById("price").innerText = "ERROR";
-        document.getElementById("announcement").innerHTML =
-            "❌ Gagal mengambil data. Cek koneksi atau API.";
-    }
+  } catch (e) {
+    console.log(e);
+  }
 }
 
-fetchSiren();
-setInterval(fetchSiren, 10000);
+
+// ===== WHALE DETECTOR =====
+async function whaleTracker() {
+  try {
+    const res = await fetch("https://api.dexscreener.com/latest/dex/tokens/" + CA);
+    const data = await res.json();
+
+    const tx = data.pairs[0].txns.h24;
+
+    let status = "";
+
+    if (tx.buys > tx.sells) {
+      status = "🟢 BUY PRESSURE: " + tx.buys + " buys";
+    } else {
+      status = "🔴 SELL PRESSURE: " + tx.sells + " sells";
+    }
+
+    // fake whale detection indicator
+    if (tx.buys + tx.sells > 500) {
+      status += "<br><span class='warn'>⚠ HIGH ACTIVITY (WHALE POSSIBLE)</span>";
+    }
+
+    document.getElementById("whale").innerHTML = status;
+
+  } catch (e) {
+    console.log(e);
+  }
+}
+
+
+// ===== LIQUIDATION ESTIMATOR (SIMULATED) =====
+function liquidationEstimator() {
+  if (!lastPrice) return;
+
+  const longLiq = lastPrice * 0.90;
+  const shortLiq = lastPrice * 1.10;
+  const extreme = lastPrice * 0.85;
+
+  document.getElementById("liq").innerHTML = `
+    LONG LIQ: <span class="danger">$${longLiq.toFixed(8)}</span><br>
+    SHORT LIQ: <span class="warn">$${shortLiq.toFixed(8)}</span><br>
+    EXTREME ZONE: <span class="danger">$${extreme.toFixed(8)}</span>
+  `;
+}
+
+
+// ===== AUTO LOOP =====
+async function loop() {
+  await fetchMarket();
+  await whaleTracker();
+  liquidationEstimator();
+}
+
+loop();
+setInterval(loop, 1500); // 1.5s realtime feel
 
 </script>
 
